@@ -56,14 +56,16 @@ namespace VyneCompiler.Parsers {
         public LineComment() { }
 
         public override bool ValidateNext(char c) {
-            if (Text.Length <= 2) {
+            if (Text.Length <= 1) {
                 return c == '/';
             }
             return Text.Last() != '\n';
         }
         public override bool IsValid() {
-            return Text.Last() == '\n';
+            return Text.Length >= 2 && Enumerable.SequenceEqual(Text.Take(2), _opening);
         }
+
+        private char[] _opening = new char[] {'/', '/'};
     }
     public class MultilineComment : Parser {
         public MultilineComment() { }
