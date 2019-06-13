@@ -25,6 +25,7 @@ namespace VyneCompiler {
 
             string output = JsonConvert.SerializeObject(p, Formatting.Indented);
             Console.WriteLine(output);
+            Console.WriteLine("IsValid: " + p.IsValid());
 
             using(StreamWriter writer = new StreamWriter(outputFile)) {
                 writer.Write(output);

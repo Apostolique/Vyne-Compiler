@@ -8,6 +8,7 @@ namespace VyneCompiler.Parsers {
         } = "";
 
         public abstract bool ValidateNext(char c);
+        public abstract bool IsValid();
 
         public virtual void Add(char c) {
             Text += c;
@@ -25,12 +26,30 @@ namespace VyneCompiler.Parsers {
                 return char.IsLetterOrDigit(c);
             }
         }
+        public override bool IsValid() {
+            bool foundUnderscore = false;
+            for (int i = 0; i < Text.Length; i++) {
+                if (Text[i] == '_') {
+                    foundUnderscore = true;
+                } else if (!foundUnderscore && char.IsDigit(Text[i])) {
+                    break;
+                } else if (char.IsLetterOrDigit(Text[i])) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
     public class Integer : Parser {
         public Integer() { }
 
         public override bool ValidateNext(char c) {
             return char.IsDigit(c);
+        }
+        public override bool IsValid() {
+            // Perhaps it will make sense to check if the value is within a Signed 32-bit integer.
+            // That is, until we get a real type system.
+            return true;
         }
     }
     public class LineComment : Parser {
@@ -41,6 +60,9 @@ namespace VyneCompiler.Parsers {
                 return c == '/';
             }
             return Text.Last() != '\n';
+        }
+        public override bool IsValid() {
+            return Text.Last() == '\n';
         }
     }
     public class MultilineComment : Parser {
@@ -57,6 +79,9 @@ namespace VyneCompiler.Parsers {
                 return false;
             }
             return true;
+        }
+        public override bool IsValid() {
+            return Text.Length >= 4 && _nestingLevel <= 0;
         }
         public override void Add(char c) {
             Text += c;
