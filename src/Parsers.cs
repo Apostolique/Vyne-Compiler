@@ -56,7 +56,7 @@ namespace VyneCompiler.Parsers {
             return Text.Last() != '\n';
         }
         public override bool IsValid() {
-            return Text.Length >= 2 && Enumerable.SequenceEqual(Text.Take(2), _opening);
+            return Enumerable.SequenceEqual(Text.Take(2), _opening);
         }
 
         private char[] _opening = new char[] {'/', '/'};
@@ -67,10 +67,12 @@ namespace VyneCompiler.Parsers {
                 return c == '/';
             } else if (Text.Length == 1) {
                 return c == '*';
-            } else if (Text.Length >= 4 && Enumerable.SequenceEqual(Text.TakeLast(2).Append(c), _breakOut)) {
-                return true;
-            } else if (Text.Length >= 4 && _nestingLevel == 0) {
-                return false;
+            } else if (Text.Length >= 4) {
+                if (Enumerable.SequenceEqual(Text.TakeLast(2).Append(c), _breakOut)) {
+                    return true;
+                } else if (_nestingLevel == 0) {
+                    return false;
+                }
             }
             return true;
         }
@@ -80,7 +82,7 @@ namespace VyneCompiler.Parsers {
         public override void Add(char c) {
             Text += c;
 
-            if (Text.Length >= 2 && Enumerable.SequenceEqual(Text.TakeLast(2), _opening)) {
+            if (Enumerable.SequenceEqual(Text.TakeLast(2), _opening)) {
                 _nestingLevel++;
             } else if (Text.Length >= 5 && Enumerable.SequenceEqual(Text.TakeLast(3), _breakOut)) {
                 _nestingLevel = 0;
