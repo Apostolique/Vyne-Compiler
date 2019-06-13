@@ -17,7 +17,7 @@ namespace VyneCompiler {
 
             Parsers.MultilineComment p = new Parsers.MultilineComment();
             for (int i = 0; i < content.Length; i++) {
-                if (!p.PossibleNext(content[i])) {
+                if (!p.ValidateNext(content[i])) {
                     break;
                 }
                 p.Add(content[i]);

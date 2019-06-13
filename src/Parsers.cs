@@ -7,7 +7,7 @@ namespace VyneCompiler.Parsers {
             set;
         } = "";
 
-        public abstract bool PossibleNext(char c);
+        public abstract bool ValidateNext(char c);
 
         public virtual void Add(char c) {
             Text += c;
@@ -16,7 +16,7 @@ namespace VyneCompiler.Parsers {
     public class Identifier : Parser {
         public Identifier() { }
 
-        public override bool PossibleNext(char c) {
+        public override bool ValidateNext(char c) {
             if (c == '_') {
                 return true;
             } else if (Text.Length == 0) {
@@ -29,14 +29,14 @@ namespace VyneCompiler.Parsers {
     public class Integer : Parser {
         public Integer() { }
 
-        public override bool PossibleNext(char c) {
+        public override bool ValidateNext(char c) {
             return char.IsDigit(c);
         }
     }
     public class LineComment : Parser {
         public LineComment() { }
 
-        public override bool PossibleNext(char c) {
+        public override bool ValidateNext(char c) {
             if (Text.Length <= 2) {
                 return c == '/';
             }
@@ -46,7 +46,7 @@ namespace VyneCompiler.Parsers {
     public class MultilineComment : Parser {
         public MultilineComment() { }
 
-        public override bool PossibleNext(char c) {
+        public override bool ValidateNext(char c) {
             if (Text.Length == 0) {
                 return c == '/';
             } else if (Text.Length == 1) {
