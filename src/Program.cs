@@ -8,8 +8,8 @@ namespace VyneCompiler {
         static void Main(string[] args) {
             Console.WriteLine("Started Vyne compiler.");
 
-            string inputFile = "VyneExamples/HelloWorld.vyne";
-            string outputFile = "VyneExamples/HelloWorld.json";
+            string inputFile = "VyneSource/HelloWorld.vyne";
+            string outputFile = "VyneSource/HelloWorld.json";
             string content;
             using(StreamReader sr = new StreamReader(inputFile, Encoding.UTF8)) {
                 content = sr.ReadToEnd();
