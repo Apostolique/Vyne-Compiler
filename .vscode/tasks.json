@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/VyneCompiler.csproj"
+                "${workspaceFolder}/src/VyneCompiler.csproj"
             ],
             "problemMatcher": "$msCompile"
         }
