@@ -49,7 +49,7 @@ namespace VyneCompiler.Parsers {
         public override bool IsValid() {
             // Perhaps it will make sense to check if the value is within a Signed 32-bit integer.
             // That is, until we get a real type system.
-            return true;
+            return Text.Length > 0;
         }
     }
     public class LineComment : Parser {
