@@ -15,8 +15,6 @@ namespace VyneCompiler.Parsers {
         }
     }
     public class Identifier : Parser {
-        public Identifier() { }
-
         public override bool ValidateNext(char c) {
             if (c == '_') {
                 return true;
@@ -41,8 +39,6 @@ namespace VyneCompiler.Parsers {
         }
     }
     public class Integer : Parser {
-        public Integer() { }
-
         public override bool ValidateNext(char c) {
             return char.IsDigit(c);
         }
@@ -53,8 +49,6 @@ namespace VyneCompiler.Parsers {
         }
     }
     public class LineComment : Parser {
-        public LineComment() { }
-
         public override bool ValidateNext(char c) {
             if (Text.Length <= 1) {
                 return c == '/';
@@ -68,8 +62,6 @@ namespace VyneCompiler.Parsers {
         private char[] _opening = new char[] {'/', '/'};
     }
     public class MultilineComment : Parser {
-        public MultilineComment() { }
-
         public override bool ValidateNext(char c) {
             if (Text.Length == 0) {
                 return c == '/';
