@@ -1,4 +1,6 @@
+using System;
 using System.Linq;
+using NUnit.Framework;
 
 namespace VyneCompiler.Parsers {
     public abstract class Parser {
@@ -95,5 +97,37 @@ namespace VyneCompiler.Parsers {
         private char[] _opening = new char[] {'/', '*'};
         private char[] _closing = new char[] {'*', '/'};
         private char[] _breakOut = new char[] {'*', '/', '/'};
+    }
+
+    // Tests
+
+    [TestFixture]
+    public class ParserTests {
+        public bool Test_Identifier(string content) {
+            Identifier p = new Identifier();
+            foreach (char c in content) {
+                if (!p.ValidateNext(c)) {
+                    return false;
+                }
+                p.Add(c);
+            }
+            return p.IsValid();
+        }
+
+        [TestCase("hello")]
+        [TestCase("hello123")]
+        [TestCase("_hello")]
+        [TestCase("_hello_world")]
+        [TestCase("_123")]
+        public void Valid_Identifier(string content) {
+            Assert.IsTrue(Test_Identifier(content));
+        }
+        [TestCase("123")]
+        [TestCase("hello world")]
+        [TestCase(" hello")]
+        [TestCase("/*+-")]
+        public void Invalid_Identifier(string content) {
+            Assert.IsFalse(Test_Identifier(content));
+        }
     }
 }
