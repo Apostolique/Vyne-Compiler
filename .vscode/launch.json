@@ -12,9 +12,9 @@
             "program": "${workspaceFolder}/src/bin/Debug/netcoreapp2.2/VyneCompiler.dll",
             "args": [],
             "cwd": "${workspaceFolder}/src",
-            "console": "internalConsole",
+            "console": "integratedTerminal",
             "stopAtEntry": false,
-            "internalConsoleOptions": "openOnSessionStart"
+            "internalConsoleOptions": "neverOpen"
         },
         {
             "name": ".NET Core Attach",
