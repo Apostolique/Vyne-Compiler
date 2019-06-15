@@ -113,17 +113,6 @@ namespace VyneCompiler.Parsers {
 
     [TestFixture]
     public class ParserTests {
-        public bool Test_Identifier(string content) {
-            Identifier p = new Identifier();
-            foreach (char c in content) {
-                if (!p.ValidateNext(c)) {
-                    return false;
-                }
-                p.Add(c);
-            }
-            return p.IsValid();
-        }
-
         [TestCase("hello")]
         [TestCase("hello123")]
         [TestCase("_hello")]
@@ -132,12 +121,84 @@ namespace VyneCompiler.Parsers {
         public void Valid_Identifier(string content) {
             Assert.IsTrue(Test_Identifier(content));
         }
+        [TestCase("")]
         [TestCase("123")]
         [TestCase("hello world")]
         [TestCase(" hello")]
         [TestCase("/*+-")]
         public void Invalid_Identifier(string content) {
             Assert.IsFalse(Test_Identifier(content));
+        }
+
+        [TestCase("1")]
+        [TestCase("12")]
+        public void Valid_Integer(string content) {
+            Assert.IsTrue(Test_Integer(content));
+        }
+        [TestCase("")]
+        [TestCase("hello")]
+        public void Invalid_Integer(string content) {
+            Assert.IsFalse(Test_Integer(content));
+        }
+
+        [TestCase("// Hello")]
+        [TestCase("// Hello\n")]
+        [TestCase("// Hello\r\n")]
+        public void Valid_LineComment(string content) {
+            Assert.IsTrue(Test_LineComment(content));
+        }
+        [TestCase("")]
+        [TestCase("hello")]
+        public void Invalid_LineComment(string content) {
+            Assert.IsFalse(Test_LineComment(content));
+        }
+
+        [TestCase("/**/")]
+        [TestCase("/**//")]
+        [TestCase("/* Hello */")]
+        [TestCase("/* Hello\n   World */")]
+        [TestCase("/* Hello /* World */*/")]
+        [TestCase("/* Hello /* World *//")]
+        [TestCase("/* /* /* /* /* /* /* *//")]
+        [TestCase("/*/*/*/**/*/*/*/")]
+        [TestCase("/*/*/*/**//")]
+        public void Valid_MultilineComment(string content) {
+            Assert.IsTrue(Test_MultilineComment(content));
+        }
+        [TestCase("")]
+        [TestCase("hello")]
+        [TestCase("/**///")]
+        [TestCase("/*/")]
+        [TestCase("/*//")]
+        [TestCase("/*/*//")]
+        public void Invalid_MultilineComment(string content) {
+            Assert.IsFalse(Test_MultilineComment(content));
+        }
+
+        private bool Test_Identifier(string content) {
+            Identifier p = new Identifier();
+            return Test_Parser(p, content);
+        }
+        private bool Test_Integer(string content) {
+            Integer p = new Integer();
+            return Test_Parser(p, content);
+        }
+        private bool Test_LineComment(string content) {
+            LineComment p = new LineComment();
+            return Test_Parser(p, content);
+        }
+        private bool Test_MultilineComment(string content) {
+            MultilineComment p = new MultilineComment();
+            return Test_Parser(p, content);
+        }
+        private bool Test_Parser(Parser p, string content) {
+            foreach (char c in content) {
+                if (!p.ValidateNext(c)) {
+                    return false;
+                }
+                p.Add(c);
+            }
+            return p.IsValid();
         }
     }
 }
