@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
@@ -84,16 +85,25 @@ namespace VyneCompiler.Parsers {
         public override void Add(char c) {
             Text += c;
 
-            if (Enumerable.SequenceEqual(Text.TakeLast(2), _opening)) {
+            int char2 = Text.Length - 2;
+            int char3 = Text.Length - 3;
+            IEnumerable<char> last2 = Text.TakeLast(2);
+            IEnumerable<char> last3 = Text.TakeLast(3);
+            if (_lastCharClosed < char2 && Enumerable.SequenceEqual(last2, _opening)) {
                 _nestingLevel++;
-            } else if (Text.Length >= 5 && Enumerable.SequenceEqual(Text.TakeLast(3), _breakOut)) {
+                _lastCharOpen = Text.Length - 1;
+            } else if (_lastCharOpen < char3 && Enumerable.SequenceEqual(last3, _breakOut)) {
                 _nestingLevel = 0;
-            } else if (Text.Length >= 4 && Enumerable.SequenceEqual(Text.TakeLast(2), _closing)) {
+                _lastCharClosed = Text.Length - 1;
+            } else if (_lastCharOpen < char2 && Enumerable.SequenceEqual(last2, _closing)) {
                 _nestingLevel--;
+                _lastCharClosed = Text.Length - 1;
             }
         }
 
         private int _nestingLevel = 0;
+        private int _lastCharOpen = -1;
+        private int _lastCharClosed = -1;
         private char[] _opening = new char[] {'/', '*'};
         private char[] _closing = new char[] {'*', '/'};
         private char[] _breakOut = new char[] {'*', '/', '/'};
