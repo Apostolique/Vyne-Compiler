@@ -167,6 +167,8 @@ namespace VyneCompiler.Parsers {
         }
         [TestCase("")]
         [TestCase("hello")]
+        [TestCase("*/")]
+        [TestCase("*//")]
         [TestCase("/**///")]
         [TestCase("/*/")]
         [TestCase("/*//")]
