@@ -17,7 +17,7 @@ namespace VyneCompiler.Constructs {
     public class FactorExpression : Factor {
         public Expression Expression;
     }
-    public class FactorName : Factor {
+    public class FactorIdentifier : Factor {
         public string Name;
     }
     public class FactorInteger : Factor {
