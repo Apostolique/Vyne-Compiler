@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using NUnit.Framework;
 
 namespace VyneCompiler.Parsers {
     public abstract class Parser {
+        [DefaultValue("")]
         public string Text {
             get;
             set;

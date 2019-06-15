@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
@@ -23,7 +23,7 @@ namespace VyneCompiler {
                 p.Add(content[i]);
             }
 
-            string output = JsonConvert.SerializeObject(p, Formatting.Indented);
+            string output = JsonConvert.SerializeObject(p, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore});
             Console.WriteLine(output);
             Console.WriteLine("IsValid: " + p.IsValid());
 
