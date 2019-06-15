@@ -10,6 +10,16 @@
                 "${workspaceFolder}/src/VyneCompiler.csproj"
             ],
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "run tests",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "test",
+                "${workspaceFolder}/src/VyneCompiler.csproj"
+            ],
+            "problemMatcher": "$msCompile"
         }
     ]
 }
