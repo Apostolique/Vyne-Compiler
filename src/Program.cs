@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
@@ -15,17 +15,20 @@ namespace VyneCompiler {
                 content = sr.ReadToEnd();
             }
 
-            Parsers.MultilineComment p = new Parsers.MultilineComment();
+            Parsers.Expression p = new Parsers.Expression();
             for (int i = 0; i < content.Length; i++) {
                 if (!p.ValidateNext(content[i])) {
                     break;
                 }
                 p.Add(content[i]);
             }
-
-            string output = JsonConvert.SerializeObject(p, Formatting.Indented, new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore});
-            Console.WriteLine(output);
             Console.WriteLine("IsValid: " + p.IsValid());
+
+            string output = JsonConvert.SerializeObject(p, Formatting.Indented, new JsonSerializerSettings {
+                DefaultValueHandling = DefaultValueHandling.Ignore,
+                NullValueHandling = NullValueHandling.Ignore
+            });
+            Console.WriteLine(output);
 
             using(StreamWriter writer = new StreamWriter(outputFile)) {
                 writer.Write(output);
