@@ -1,3 +1,23 @@
 {
-  "Text": "/* Hello /* Wait for it! *//"
+  "TermOperator": {
+    "Addition": {
+      "Left": {
+        "Factor": {
+          "Integer": {
+            "Text": "123"
+          }
+        }
+      },
+      "Operator": {
+        "Text": "+"
+      },
+      "Right": {
+        "Factor": {
+          "Integer": {
+            "Text": "456"
+          }
+        }
+      }
+    }
+  }
 }
