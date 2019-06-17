@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
+using System.Dynamic;
 using System.Linq;
 using NUnit.Framework;
 
@@ -10,28 +10,226 @@ namespace VyneCompiler.Parsers {
     /// It's up to the parser's parent to clean up white space and comments after it.
     /// </summary>
     public abstract class Parser {
-        [DefaultValue("")]
         public string Text {
             get;
             set;
         } = "";
 
+        public bool CachedValidNext {
+            get;
+            private set;
+        } = true;
+        public bool CachedValid {
+            get;
+            private set;
+        } = false;
+
         /// <summary>
         /// This must always be called before Add is called.
         /// </summary>
         /// <returns>Returns true when Add can be called.</returns>
-        public abstract bool ValidateNext(char c);
+        public bool ValidateNext(char c) {
+            CachedValidNext = validateNext(c);
+            return CachedValidNext;
+        }
         /// <summary>
         /// Called at the end to make sure the parse is still valid.
         /// </summary>
-        public abstract bool IsValid();
+        public bool IsValid() {
+            CachedValid = isValid();
+            return CachedValid;
+        }
 
         public virtual void Add(char c) {
             Text += c;
         }
+        /// <summary>
+        /// The json output is useful for debugging.
+        /// </summary>
+        public abstract ExpandoObject ToJson();
+
+        protected abstract bool validateNext(char c);
+        protected abstract bool isValid();
+    }
+    public class Whitespace : Parser {
+        protected override bool validateNext(char c) {
+            return char.IsWhiteSpace(c);
+        }
+        protected override bool isValid() {
+            return Text.Length > 0;
+        }
+        public override ExpandoObject ToJson() {
+            dynamic text = new ExpandoObject();
+            text.Text = Text;
+            dynamic whitespace = new ExpandoObject();
+            whitespace.Whitespace = text;
+            return whitespace;
+        }
+    }
+    public class Token : Parser {
+        public Token(string name, string sequence) {
+            _name = name;
+            _sequence = sequence.ToArray();
+        }
+
+        public override void Add(char c) {
+            if (_discard != null) {
+                _discard.Add(c);
+            } else {
+                Text += c;
+            }
+        }
+        protected override bool validateNext(char c) {
+            if (_discard != null) {
+                if (!_discard.ValidateNext(c)) {
+                    _discard = null;
+                }
+            }
+            if (_discard != null) {
+                return true;
+            }
+
+            return Text.Length < _sequence.Length && c == _sequence[Text.Length];
+        }
+        protected override bool isValid() {
+            return Text.Length == _sequence.Length;
+        }
+        public override ExpandoObject ToJson() {
+            dynamic text = new ExpandoObject();
+            text.Text = Text;
+            var op = new ExpandoObject() as IDictionary<string, object>;
+            op.Add(_name, text);
+            return (dynamic)op;
+        }
+
+        private string _name;
+        private char[] _sequence;
+        private Whitespace _discard = new Whitespace();
+    }
+    public class Alternative : Parser {
+        public Alternative(params KeyValuePair<string, Parser>[] parsers) {
+            Parsers = new Dictionary<string, Parser>();
+            foreach (KeyValuePair<string, Parser> kp in parsers) {
+                Parsers.Add(kp.Key, kp.Value);
+            }
+        }
+
+        public Dictionary<string, Parser> Parsers;
+
+        public override void Add(char c) {
+            foreach (KeyValuePair<string, Parser> kp in Parsers) {
+                if (kp.Value.CachedValidNext) {
+                    kp.Value.Add(c);
+                }
+            }
+        }
+        protected override bool validateNext(char c) {
+            bool isValidNext = false;
+
+            foreach (KeyValuePair<string, Parser> kp in Parsers) {
+                if (kp.Value.CachedValidNext) {
+                    kp.Value.ValidateNext(c);
+                    isValidNext = isValidNext || kp.Value.CachedValidNext;
+                }
+            }
+            return isValidNext;
+        }
+        protected override bool isValid() {
+            bool isValid = false;
+
+            List<string> keys = Parsers.Keys.ToList();
+            foreach (string key in keys) {
+                if (!Parsers[key].IsValid()) {
+                    Parsers.Remove(key);
+                } else {
+                    isValid = true;
+                }
+            }
+
+            return isValid;
+        }
+        public override ExpandoObject ToJson() {
+            var json = new ExpandoObject() as IDictionary<string, Object>;
+
+            foreach (KeyValuePair<string, Parser> kp in Parsers) {
+                json.Add(kp.Key, kp.Value.ToJson());
+            }
+
+            return (ExpandoObject)json;
+        }
+    }
+    public class Sequential : Parser {
+        public Sequential(params Parser[] parsers) {
+            Parsers = parsers;
+        }
+
+        public Parser[] Parsers;
+
+        public override void Add(char c) {
+            if (Parsers.Length > 0) {
+                if (Parsers[0].CachedValidNext) {
+                    Parsers[0].Add(c);
+                }
+                for (int i = 1; i < Parsers.Length; i++) {
+                    if (!Parsers[i - 1].CachedValidNext && Parsers[i].CachedValidNext) {
+                        Parsers[i].Add(c);
+                    }
+                }
+            }
+        }
+        protected override bool validateNext(char c) {
+            if (Parsers.Length > 0) {
+                if (Parsers[0].CachedValidNext) {
+                    Parsers[0].ValidateNext(c);
+                }
+                for (int i = 1; i < Parsers.Length; i++) {
+                    if (!Parsers[i - 1].CachedValidNext && Parsers[i].CachedValidNext) {
+                        Parsers[i].ValidateNext(c);
+                    }
+                }
+                return Parsers.Last().CachedValidNext;
+            }
+            return false;
+        }
+        protected override bool isValid() {
+            bool isValid = true;
+
+            for (int i = 0; i < Parsers.Length; i++) {
+                isValid = isValid && Parsers[i].IsValid();
+            }
+
+            return isValid;
+        }
+        public override ExpandoObject ToJson() {
+            dynamic sequence = new ExpandoObject();
+
+            List<ExpandoObject> parsers = new List<ExpandoObject>();
+            for (int i = 0; i < Parsers.Length; i++) {
+                parsers.Add(Parsers[i].ToJson());
+            }
+            sequence.Sequence = parsers;
+
+            return sequence;
+        }
     }
     public class Identifier : Parser {
-        public override bool ValidateNext(char c) {
+        public override void Add(char c) {
+            if (_discard != null) {
+                _discard.Add(c);
+            } else {
+                Text += c;
+            }
+        }
+        protected override bool validateNext(char c) {
+            if (_discard != null) {
+                if (!_discard.ValidateNext(c)) {
+                    _discard = null;
+                }
+            }
+            if (_discard != null) {
+                return true;
+            }
+
             if (c == '_') {
                 return true;
             } else if (Text.Length == 0) {
@@ -40,7 +238,7 @@ namespace VyneCompiler.Parsers {
                 return char.IsLetterOrDigit(c);
             }
         }
-        public override bool IsValid() {
+        protected override bool isValid() {
             bool foundUnderscore = false;
             for (int i = 0; i < Text.Length; i++) {
                 if (Text[i] == '_') {
@@ -53,32 +251,73 @@ namespace VyneCompiler.Parsers {
             }
             return false;
         }
+        public override ExpandoObject ToJson() {
+            dynamic text = new ExpandoObject();
+            text.Text = Text;
+            dynamic identifier = new ExpandoObject();
+            identifier.Identifier = text;
+            return identifier;
+        }
+
+        private Whitespace _discard = new Whitespace();
     }
     public class Integer : Parser {
-        public override bool ValidateNext(char c) {
+        public override void Add(char c) {
+            if (_discard != null) {
+                _discard.Add(c);
+            } else {
+                Text += c;
+            }
+        }
+        protected override bool validateNext(char c) {
+            if (_discard != null) {
+                if (!_discard.ValidateNext(c)) {
+                    _discard = null;
+                }
+            }
+            if (_discard != null) {
+                return true;
+            }
+
             return char.IsDigit(c);
         }
-        public override bool IsValid() {
+        protected override bool isValid() {
             // Perhaps it will make sense to check if the value is within a Signed 32-bit integer.
             // That is, until we get a real type system.
             return Text.Length > 0;
         }
+        public override ExpandoObject ToJson() {
+            dynamic text = new ExpandoObject();
+            text.Text = Text;
+            dynamic integer = new ExpandoObject();
+            integer.Integer = text;
+            return integer;
+        }
+
+        private Whitespace _discard = new Whitespace();
     }
     public class LineComment : Parser {
-        public override bool ValidateNext(char c) {
+        protected override bool validateNext(char c) {
             if (Text.Length <= 1) {
                 return c == '/';
             }
             return Text.Last() != '\n';
         }
-        public override bool IsValid() {
+        protected override bool isValid() {
             return Enumerable.SequenceEqual(Text.Take(2), _opening);
+        }
+        public override ExpandoObject ToJson() {
+            dynamic text = new ExpandoObject();
+            text.Text = Text;
+            dynamic lineComment = new ExpandoObject();
+            lineComment.LineComment = text;
+            return lineComment;
         }
 
         private char[] _opening = new char[] { '/', '/' };
     }
     public class MultilineComment : Parser {
-        public override bool ValidateNext(char c) {
+        protected override bool validateNext(char c) {
             if (Text.Length == 0) {
                 return c == '/';
             } else if (Text.Length == 1) {
@@ -92,7 +331,7 @@ namespace VyneCompiler.Parsers {
             }
             return true;
         }
-        public override bool IsValid() {
+        protected override bool isValid() {
             return Text.Length >= 4 && _nestingLevel <= 0;
         }
         public override void Add(char c) {
@@ -113,6 +352,13 @@ namespace VyneCompiler.Parsers {
                 _lastCharClosed = Text.Length - 1;
             }
         }
+        public override ExpandoObject ToJson() {
+            dynamic text = new ExpandoObject();
+            text.Text = Text;
+            dynamic multilineComment = new ExpandoObject();
+            multilineComment.MultilineComment = text;
+            return multilineComment;
+        }
 
         private int _nestingLevel = 0;
         private int _lastCharOpen = -1;
@@ -120,377 +366,6 @@ namespace VyneCompiler.Parsers {
         private char[] _opening = new char[] { '/', '*' };
         private char[] _closing = new char[] { '*', '/' };
         private char[] _breakOut = new char[] { '*', '/', '/' };
-    }
-    public class Whitespace : Parser {
-        public override bool ValidateNext(char c) {
-            return char.IsWhiteSpace(c);
-        }
-        public override bool IsValid() {
-            return Text.Length > 0;
-        }
-    }
-    public class Operator : Parser {
-        public Operator(string sequence) {
-            _sequence = sequence.ToArray();
-        }
-
-        public override bool ValidateNext(char c) {
-            return Text.Length < _sequence.Length && c == _sequence[Text.Length];
-        }
-        public override bool IsValid() {
-            return Text.Length == _sequence.Length;
-        }
-
-        private char[] _sequence;
-    }
-    public class BinaryOperator<T> : Parser where T : Parser, new() {
-        public BinaryOperator(string sequence) {
-            Operator = new Operator(sequence);
-        }
-
-        public T Left = new T();
-        public Operator Operator;
-        public T Right = new T();
-
-        public override bool ValidateNext(char c) {
-            if (!_isLeftDone) {
-                _isLeftDone = !Left.ValidateNext(c);
-            }
-            if (_isLeftDone && !_isDiscard1Done) {
-                _isDiscard1Done = !_discard.ValidateNext(c);
-            }
-            if (_isDiscard1Done && !_isOperatorDone) {
-                _isOperatorDone = !Operator.ValidateNext(c);
-            }
-            if (_isOperatorDone && !_isDiscard2Done) {
-                _isDiscard2Done = !_discard.ValidateNext(c);
-            }
-            if (_isDiscard2Done && !_isRightDone) {
-                _isRightDone = !Right.ValidateNext(c);
-            }
-            return !_isRightDone;
-        }
-        public override bool IsValid() {
-            return Left.IsValid() && Operator.IsValid() && Right.IsValid();
-        }
-        public override void Add(char c) {
-            if (!_isLeftDone) {
-                Left.Add(c);
-            }
-            if (_isLeftDone && !_isDiscard1Done) {
-                _discard.Add(c);
-            }
-            if (_isDiscard1Done && !_isOperatorDone) {
-                Operator.Add(c);
-            }
-            if (_isOperatorDone && !_isDiscard2Done) {
-                _discard.Add(c);
-            }
-            if (_isDiscard2Done && !_isRightDone) {
-                Right.Add(c);
-            }
-        }
-
-        private bool _isLeftDone = false;
-        private bool _isDiscard1Done = false;
-        private bool _isOperatorDone = false;
-        private bool _isDiscard2Done = false;
-        private bool _isRightDone = false;
-        private Whitespace _discard = new Whitespace();
-    }
-    public class FactorOperator : Parser {
-        public BinaryOperator<Factor> Multiply = new BinaryOperator<Factor>("*");
-        public BinaryOperator<Factor> Divide = new BinaryOperator<Factor>("/");
-        public BinaryOperator<Factor> Modulo = new BinaryOperator<Factor>("%");
-
-        public override bool ValidateNext(char c) {
-            if (_validNextMultiply) {
-                _validNextMultiply = Multiply.ValidateNext(c);
-            }
-            if (_validNextDivide) {
-                _validNextDivide = Divide.ValidateNext(c);
-            }
-            if (_validNextModulo) {
-                _validNextModulo = Modulo.ValidateNext(c);
-            }
-            return _validNextMultiply || _validNextDivide || _validNextModulo;
-        }
-        public override bool IsValid() {
-            bool validMultiply = false;
-            bool validDivide = false;
-            bool validModulo = false;
-            if (Multiply != null) {
-                validMultiply = Multiply.IsValid();
-            }
-            if (Divide != null) {
-                validDivide = Divide.IsValid();
-            }
-            if (Modulo != null) {
-                validModulo = Modulo.IsValid();
-            }
-
-            // This is done to have a nicer json output.
-            if (!validMultiply) {
-                Multiply = null;
-            }
-            if (!validDivide) {
-                Divide = null;
-            }
-            if (!validModulo) {
-                Modulo = null;
-            }
-
-            return validMultiply || validDivide || validModulo;
-        }
-        public override void Add(char c) {
-            if (_validNextMultiply) {
-                Multiply.Add(c);
-            } else {
-                Multiply = null;
-            }
-            if (_validNextDivide) {
-                Divide.Add(c);
-            } else {
-                Divide = null;
-            }
-            if (_validNextModulo) {
-                Modulo.Add(c);
-            } else {
-                Modulo = null;
-            }
-        }
-
-        private bool _validNextMultiply = true;
-        private bool _validNextDivide = true;
-        private bool _validNextModulo = true;
-    }
-    public class TermOperator : Parser {
-        public BinaryOperator<Term> Addition = new BinaryOperator<Term>("+");
-        public BinaryOperator<Term> Subtract = new BinaryOperator<Term>("-");
-
-        public override bool ValidateNext(char c) {
-            if (_validNextAddition) {
-                _validNextAddition = Addition.ValidateNext(c);
-            }
-            if (_validNextSubtract) {
-                _validNextSubtract = Subtract.ValidateNext(c);
-            }
-            return _validNextAddition || _validNextSubtract;
-        }
-        public override bool IsValid() {
-            bool validAddition = false;
-            bool validSubtract = false;
-            if (Addition != null) {
-                validAddition = Addition.IsValid();
-            }
-            if (Subtract != null) {
-                validSubtract = Subtract.IsValid();
-            }
-
-            // This is done to have a nicer json output.
-            if (!validAddition) {
-                Addition = null;
-            }
-            if (!validSubtract) {
-                Subtract = null;
-            }
-
-            return validAddition || validSubtract;
-        }
-        public override void Add(char c) {
-            if (_validNextAddition) {
-                Addition.Add(c);
-            } else {
-                Addition = null;
-            }
-            if (_validNextSubtract) {
-                Subtract.Add(c);
-            } else {
-                Subtract = null;
-            }
-        }
-
-        private bool _validNextAddition = true;
-        private bool _validNextSubtract = true;
-    }
-    public class FactorIdentifier : Parser {
-        public Identifier Identifier = new Identifier();
-
-        public override bool ValidateNext(char c) {
-            return Identifier.ValidateNext(c);
-        }
-        public override bool IsValid() {
-            return Identifier.IsValid();
-        }
-        public override void Add(char c) {
-            Identifier.Add(c);
-        }
-    }
-    public class Factor : Parser {
-        // Note: This code is simplified. It will most likely not work in some cases.
-        public Identifier Identifier = new Identifier();
-        public Integer Integer = new Integer();
-        //public Expression Expression = new Expression(); FIXME
-
-        public override bool ValidateNext(char c) {
-            if (_validNextIdentifier) {
-                _validNextIdentifier = Identifier.ValidateNext(c);
-            }
-            if (_validNextInteger) {
-                _validNextInteger = Integer.ValidateNext(c);
-            }
-            /*if (_validNextExpression) {
-                _validNextExpression = Expression.ValidateNext(c);
-            } FIXME*/
-            return _validNextIdentifier || _validNextInteger/*|| _validNextExpression FIXME*/;
-        }
-        public override bool IsValid() {
-            bool validIdentifier = false;
-            bool validInteger = false;
-            bool validExpression = false;
-            if (Identifier != null) {
-                validIdentifier = Identifier.IsValid();
-            }
-            if (Integer != null) {
-                validInteger = Integer.IsValid();
-            }
-            /*if (Expression != null) {
-                validExpression = Expression.IsValid();
-            } FIXME*/
-
-            // This is done to have a nicer json output.
-            if (!validIdentifier) {
-                Identifier = null;
-            }
-            if (!validInteger) {
-                Integer = null;
-            }
-            /*if (!validExpression) {
-                Expression = null;
-            } FIXME*/
-
-            return validIdentifier || validInteger || validExpression;
-        }
-        public override void Add(char c) {
-            if (_validNextIdentifier) {
-                Identifier.Add(c);
-            } else {
-                Identifier = null;
-            }
-            if (_validNextInteger) {
-                Integer.Add(c);
-            } else {
-                Integer = null;
-            }
-            /*if (_validNextExpression) {
-                Expression.Add(c);
-            } else {
-                Expression = null;
-            } FIXME*/
-        }
-
-        private bool _validNextIdentifier = true;
-        private bool _validNextInteger = true;
-        //private bool _validNextExpression = true; FIXME
-    }
-    public class Term : Parser {
-        public Factor Factor = new Factor();
-        public FactorOperator FactorOperator = new FactorOperator();
-
-        public override bool ValidateNext(char c) {
-            if (_validNextFactor) {
-                _validNextFactor = Factor.ValidateNext(c);
-            }
-            if (_validNextFactorOperator) {
-                _validNextFactorOperator = FactorOperator.ValidateNext(c);
-            }
-
-            return _validNextFactor || _validNextFactorOperator;
-        }
-        public override bool IsValid() {
-            bool validTermFactor = false;
-            bool validTermBinary = false;
-            if (Factor != null) {
-                validTermFactor = Factor.IsValid();
-            }
-            if (FactorOperator != null) {
-                validTermBinary = FactorOperator.IsValid();
-            }
-
-            // This is done to have a nicer json output.
-            if (!validTermFactor) {
-                Factor = null;
-            }
-            if (!validTermBinary) {
-                FactorOperator = null;
-            }
-
-            return validTermFactor || validTermBinary;
-        }
-        public override void Add(char c) {
-            if (_validNextFactor) {
-                Factor.Add(c);
-            } else {
-                Factor = null;
-            }
-            if (_validNextFactorOperator) {
-                FactorOperator.Add(c);
-            } else {
-                FactorOperator = null;
-            }
-        }
-
-        private bool _validNextFactor = true;
-        private bool _validNextFactorOperator = true;
-    }
-    public class Expression : Parser {
-        public Term Term = new Term();
-        public TermOperator TermOperator = new TermOperator();
-
-        public override bool ValidateNext(char c) {
-            if (_validNextTerm) {
-                _validNextTerm = Term.ValidateNext(c);
-            }
-            if (_validNextTermOperator) {
-                _validNextTermOperator = TermOperator.ValidateNext(c);
-            }
-            return _validNextTerm || _validNextTermOperator;
-        }
-        public override bool IsValid() {
-            bool validTerm = false;
-            bool validTermOperator = false;
-            if (Term != null) {
-                validTerm = Term.IsValid();
-            }
-            if (TermOperator != null) {
-                validTermOperator = TermOperator.IsValid();
-            }
-
-            // This is done to have a nicer json output.
-            if (!validTerm) {
-                Term = null;
-            }
-            if (!validTermOperator) {
-                TermOperator = null;
-            }
-
-            return validTerm || validTermOperator;
-        }
-        public override void Add(char c) {
-            if (_validNextTerm) {
-                Term.Add(c);
-            } else {
-                Term = null;
-            }
-            if (_validNextTermOperator) {
-                TermOperator.Add(c);
-            } else {
-                TermOperator = null;
-            }
-        }
-
-        private bool _validNextTerm = true;
-        private bool _validNextTermOperator = true;
     }
 
     // Tests
@@ -502,6 +377,7 @@ namespace VyneCompiler.Parsers {
         [TestCase("_hello")]
         [TestCase("_hello_world")]
         [TestCase("_123")]
+        [TestCase("    hello")]
         public void Valid_Identifier(string content) {
             Assert.IsTrue(Test_Identifier(content));
         }
@@ -509,7 +385,6 @@ namespace VyneCompiler.Parsers {
         [TestCase("")]
         [TestCase("123")]
         [TestCase("hello world")]
-        [TestCase(" hello")]
         [TestCase("/*+-")]
         public void Invalid_Identifier(string content) {
             Assert.IsFalse(Test_Identifier(content));
@@ -517,6 +392,7 @@ namespace VyneCompiler.Parsers {
 
         [TestCase("1")]
         [TestCase("12")]
+        [TestCase("    12")]
         public void Valid_Integer(string content) {
             Assert.IsTrue(Test_Integer(content));
         }
@@ -565,6 +441,31 @@ namespace VyneCompiler.Parsers {
             Assert.IsFalse(Test_MultilineComment(content));
         }
 
+        [TestCase("    ")]
+        [TestCase("\t")]
+        [TestCase("\n")]
+        [TestCase("\r\n")]
+        public void Valid_Whitespace(string content) {
+            Assert.IsTrue(Test_Whitespace(content));
+        }
+
+        [TestCase("")]
+        [TestCase("hello")]
+        public void Invalid_Whitespace(string content) {
+            Assert.IsFalse(Test_Whitespace(content));
+        }
+
+        [TestCase("/*Hello*/123")]
+        public void Valid_Sequential(string content) {
+            Assert.IsTrue(Test_Sequential(content));
+        }
+
+        [TestCase("123")]
+        [TestCase("hello")]
+        public void Valid_Parallel(string content) {
+            Assert.IsTrue(Test_Parallel(content));
+        }
+
         private bool Test_Identifier(string content) {
             Identifier p = new Identifier();
             return Test_Parser(p, content);
@@ -579,6 +480,18 @@ namespace VyneCompiler.Parsers {
         }
         private bool Test_MultilineComment(string content) {
             MultilineComment p = new MultilineComment();
+            return Test_Parser(p, content);
+        }
+        private bool Test_Whitespace(string content) {
+            Whitespace p = new Whitespace();
+            return Test_Parser(p, content);
+        }
+        private bool Test_Sequential(string content) {
+            Sequential p = new Sequential(new MultilineComment(), new Integer());
+            return Test_Parser(p, content);
+        }
+        private bool Test_Parallel(string content) {
+            Alternative p = new Alternative(new KeyValuePair<string, Parser>("Identifer", new Identifier()), new KeyValuePair<string, Parser>("Integer", new Integer()));
             return Test_Parser(p, content);
         }
         private bool Test_Parser(Parser p, string content) {
