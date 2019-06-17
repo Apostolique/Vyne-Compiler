@@ -1,23 +1,19 @@
 {
-  "TermOperator": {
-    "Addition": {
-      "Left": {
-        "Factor": {
-          "Integer": {
-            "Text": "123"
-          }
-        }
-      },
-      "Operator": {
-        "Text": "+"
-      },
-      "Right": {
-        "Factor": {
-          "Integer": {
-            "Text": "456"
-          }
-        }
+  "Sequence": [
+    {
+      "Integer": {
+        "Text": "123"
+      }
+    },
+    {
+      "Identifier": {
+        "Text": "hello"
+      }
+    },
+    {
+      "Integer": {
+        "Text": "456"
       }
     }
-  }
+  ]
 }

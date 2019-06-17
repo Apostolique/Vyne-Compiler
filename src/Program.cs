@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
+using VyneCompiler.Parsers;
 
 namespace VyneCompiler {
     class Program {
@@ -15,7 +16,7 @@ namespace VyneCompiler {
                 content = sr.ReadToEnd();
             }
 
-            Parsers.Expression p = new Parsers.Expression();
+            Sequential p = new Sequential(new Integer(), new Identifier(), new Integer());
             for (int i = 0; i < content.Length; i++) {
                 if (!p.ValidateNext(content[i])) {
                     break;
@@ -24,10 +25,7 @@ namespace VyneCompiler {
             }
             Console.WriteLine("IsValid: " + p.IsValid());
 
-            string output = JsonConvert.SerializeObject(p, Formatting.Indented, new JsonSerializerSettings {
-                DefaultValueHandling = DefaultValueHandling.Ignore,
-                NullValueHandling = NullValueHandling.Ignore
-            });
+            string output = JsonConvert.SerializeObject(p.ToJson(), Formatting.Indented);
             Console.WriteLine(output);
 
             using(StreamWriter writer = new StreamWriter(outputFile)) {
