@@ -1,19 +1,47 @@
 {
   "Sequence": [
     {
-      "Integer": {
-        "Text": "123"
-      }
+      "FactorOperator": [
+        {
+          "Sequence": [
+            {
+              "Factor": {
+                "Integer": {
+                  "Text": "123"
+                }
+              }
+            },
+            {
+              "Operator": {
+                "Multiply": {
+                  "Text": "*"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "Sequence": [
+            {
+              "Factor": {
+                "Integer": {
+                  "Text": "456"
+                }
+              }
+            },
+            {
+              "Operator": {
+                "Divide": {
+                  "Text": "/"
+                }
+              }
+            }
+          ]
+        }
+      ]
     },
     {
-      "Identifier": {
-        "Text": "hello"
-      }
-    },
-    {
-      "Integer": {
-        "Text": "456"
-      }
+      "Factor": []
     }
   ]
 }
