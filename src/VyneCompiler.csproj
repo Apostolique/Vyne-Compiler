@@ -19,7 +19,7 @@
   <ItemGroup>
     <Content Include="VyneExamples\*.*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>  
+    </Content>
   </ItemGroup>
 
 </Project>
