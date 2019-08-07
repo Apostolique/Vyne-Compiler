@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Optional" Version="4.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.1"/>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.3.0"/>
     <PackageReference Include="NUnit" Version="3.12.0"/>
