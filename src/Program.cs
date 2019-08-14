@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
@@ -11,10 +12,7 @@ namespace VyneCompiler {
 
             string inputFile = "VyneSource/HelloWorld.vyne";
             string outputFile = "VyneSource/HelloWorld.json";
-            string content;
-            using(StreamReader sr = new StreamReader(inputFile, Encoding.UTF8)) {
-                content = sr.ReadToEnd();
-            }
+            Core.Setup(inputFile);
 
             Sequential p = new Sequential(
                 new Lazy<Parser>(() => new Repeat("FactorOperator", () =>
@@ -29,11 +27,11 @@ namespace VyneCompiler {
                 )),
                 new Lazy<Parser>(() => new Factor())
             );
-            for (int i = 0; i < content.Length; i++) {
-                if (!p.ValidateNext(content[i])) {
+            for (int i = 0; !Core.IsEndReached(i); i++) {
+                if (!p.ValidateNext(Core.GetCharAt(i).Value)) {
                     break;
                 }
-                p.Add(content[i]);
+                p.Add(Core.GetCharAt(i).Value);
             }
             Console.WriteLine("IsValid: " + p.IsValid());
 
