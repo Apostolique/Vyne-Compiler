@@ -7,17 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/src/VyneCompiler.csproj"
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "run tests",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "test",
-                "${workspaceFolder}/src/VyneCompiler.csproj"
+                "${workspaceFolder}/src/VyneCompiler/VyneCompiler.csproj"
             ],
             "problemMatcher": "$msCompile"
         }
