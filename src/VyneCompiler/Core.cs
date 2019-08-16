@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -12,8 +11,9 @@ namespace VyneCompiler.Parsers {
         public static char? GetCharAt(int index) {
             if (index < _source.Length) {
                 return _source[index];
+            } else {
+                return '\0';
             }
-            return null;
         }
         public static string GetStringAt(int index, int length) {
             if (index + length <= _source.Length) {
@@ -22,7 +22,7 @@ namespace VyneCompiler.Parsers {
             return string.Empty;
         }
         public static bool IsEndReached(int index) {
-            return index >= _source.Length;
+            return index > _source.Length;
         }
 
         private static string _source;
