@@ -50,27 +50,25 @@ namespace VyneCompiler.Parsers {
     public class Alternative : Parser {
         public Alternative(string name, params Func<Parser>[] parsers) {
             _name = name;
-            Parsers = new List<Parser>();
+            _parsers = new List<Parser>();
             foreach (Func<Parser> parserCreator in parsers) {
-                Parsers.Add(parserCreator());
+                _parsers.Add(parserCreator());
             }
         }
 
-        public List<Parser> Parsers;
-
         public override void Add(char c) {
-            for (int i = Parsers.Count - 1; i >= 0; i--) {
-                if (Parsers[i].CachedValidNext) {
-                    Parsers[i].Add(c);
+            for (int i = _parsers.Count - 1; i >= 0; i--) {
+                if (_parsers[i].CachedValidNext) {
+                    _parsers[i].Add(c);
                 } else {
-                    Parsers.RemoveAt(i);
+                    _parsers.RemoveAt(i);
                 }
             }
         }
         protected override bool validateNext(char c) {
             bool isValidNext = false;
 
-            foreach (Parser p in Parsers) {
+            foreach (Parser p in _parsers) {
                 if (p.CachedValidNext) {
                     p.ValidateNext(c);
                     isValidNext = isValidNext || p.CachedValidNext;
@@ -81,8 +79,8 @@ namespace VyneCompiler.Parsers {
         protected override bool isValid() {
             bool isValid = false;
 
-            for (int i = 0; i < Parsers.Count; i++) {
-                if (Parsers[i].IsValid()) {
+            for (int i = 0; i < _parsers.Count; i++) {
+                if (_parsers[i].IsValid()) {
                     isValid = true;
                 }
             }
@@ -94,9 +92,9 @@ namespace VyneCompiler.Parsers {
 
             int count = 0;
             List<ExpandoObject> parsersJson = new List<ExpandoObject>();
-            if (Parsers.Count > 0) {
-                Parser parser = Parsers[0];
-                foreach (Parser p in Parsers) {
+            if (_parsers.Count > 0) {
+                Parser parser = _parsers[0];
+                foreach (Parser p in _parsers) {
                     if (p.CachedValid) {
                         parsersJson.Add(p.ToJson());
                         count++;
@@ -115,41 +113,39 @@ namespace VyneCompiler.Parsers {
         }
 
         private string _name;
+        private List<Parser> _parsers;
     }
     public class Sequential : Parser {
         public Sequential(params Func<Parser>[] parserCreators) {
-            ParserCreators = parserCreators;
-            Parsers = new List<Parser>();
+            _parserCreators = parserCreators;
+            _parsers = new List<Parser>();
 
-            if (ParserCreators.Length > 0) {
-                Parsers.Add(ParserCreators[0]());
+            if (_parserCreators.Length > 0) {
+                _parsers.Add(_parserCreators[0]());
             }
         }
 
-        public Func<Parser>[] ParserCreators;
-        public List<Parser> Parsers;
-
         public override void Add(char c) {
-            Parsers.Last().Add(c);
+            _parsers.Last().Add(c);
         }
         protected override bool validateNext(char c) {
-            if (Parsers.Count > 0) {
-                if (Parsers.Last().ValidateNext(c)) {
+            if (_parsers.Count > 0) {
+                if (_parsers.Last().ValidateNext(c)) {
                     return true;
-                } else if (Parsers.Count < ParserCreators.Length) {
-                    Parser parser = ParserCreators[Parsers.Count]();
+                } else if (_parsers.Count < _parserCreators.Length) {
+                    Parser parser = _parserCreators[_parsers.Count]();
                     parser.ValidateNext(c);
-                    Parsers.Add(parser);
+                    _parsers.Add(parser);
                     return parser.CachedValidNext;
                 }
             }
             return false;
         }
         protected override bool isValid() {
-            bool isValid = Parsers.Count == ParserCreators.Length;
+            bool isValid = _parsers.Count == _parserCreators.Length;
 
-            for (int i = 0; isValid && i < Parsers.Count; i++) {
-                isValid = Parsers[i].IsValid() && isValid;
+            for (int i = 0; isValid && i < _parsers.Count; i++) {
+                isValid = _parsers[i].IsValid() && isValid;
             }
 
             return isValid;
@@ -158,35 +154,36 @@ namespace VyneCompiler.Parsers {
             dynamic sequence = new ExpandoObject();
 
             List<ExpandoObject> parsers = new List<ExpandoObject>();
-            for (int i = 0; i < Parsers.Count; i++) {
-                parsers.Add(Parsers[i].ToJson());
+            for (int i = 0; i < _parsers.Count; i++) {
+                parsers.Add(_parsers[i].ToJson());
             }
             sequence.Sequence = parsers;
 
             return sequence;
         }
+
+        private Func<Parser>[] _parserCreators;
+        private List<Parser> _parsers;
     }
     public class Repeat : Parser {
         public Repeat(string name, Func<Parser> createParser) {
             _name = name;
-            CreateParser = createParser;
-            Parsers = new List<Parser>();
-            Parsers.Add(CreateParser());
+            _createParser = createParser;
+            _parsers = new List<Parser>();
+            _parsers.Add(_createParser());
         }
-
-        public List<Parser> Parsers;
 
         public override void Add(char c) {
-            Parsers.Last().Add(c);
+            _parsers.Last().Add(c);
         }
         protected override bool validateNext(char c) {
-            Parsers.Last().ValidateNext(c);
+            _parsers.Last().ValidateNext(c);
 
-            if (!Parsers.Last().CachedValidNext) {
-                Parser parser = CreateParser();
+            if (!_parsers.Last().CachedValidNext) {
+                Parser parser = _createParser();
                 parser.ValidateNext(c);
                 if (parser.CachedValidNext) {
-                    Parsers.Add(parser);
+                    _parsers.Add(parser);
                 }
                 return parser.CachedValidNext;
             }
@@ -194,14 +191,14 @@ namespace VyneCompiler.Parsers {
             return true;
         }
         protected override bool isValid() {
-            if (Parsers.Count == 0) {
+            if (_parsers.Count == 0) {
                 return false;
             }
 
             bool isValid = true;
 
-            for (int i = 0; i < Parsers.Count; i++) {
-                isValid = Parsers[i].IsValid() && isValid;
+            for (int i = 0; i < _parsers.Count; i++) {
+                isValid = _parsers[i].IsValid() && isValid;
             }
 
             return isValid;
@@ -210,8 +207,8 @@ namespace VyneCompiler.Parsers {
             var repeat = new ExpandoObject() as IDictionary<string, object>;
 
             List<ExpandoObject> parsers = new List<ExpandoObject>();
-            for (int i = 0; i < Parsers.Count; i++) {
-                parsers.Add(Parsers[i].ToJson());
+            for (int i = 0; i < _parsers.Count; i++) {
+                parsers.Add(_parsers[i].ToJson());
             }
             repeat.Add(_name, parsers);
 
@@ -219,7 +216,8 @@ namespace VyneCompiler.Parsers {
         }
 
         private string _name;
-        private Func<Parser> CreateParser;
+        private Func<Parser> _createParser;
+        private List<Parser> _parsers;
     }
     public class Single : Parser {
         protected override bool validateNext(char c) {
@@ -253,16 +251,14 @@ namespace VyneCompiler.Parsers {
     }
     public class Clear : Parser {
         public Clear(Parser parser) {
-            Parser = parser;
+            _parser = parser;
         }
-
-        Parser Parser;
 
         public override void Add(char c) {
             if (_discard1 != null) {
                 _discard1.Add(c);
-            } else if (Parser.CachedValidNext) {
-                Parser.Add(c);
+            } else if (_parser.CachedValidNext) {
+                _parser.Add(c);
             } else if (_discard2 != null) {
                 _discard2.Add(c);
             }
@@ -275,7 +271,7 @@ namespace VyneCompiler.Parsers {
             }
             if (_discard1 != null) {
                 return true;
-            } else if (Parser.CachedValidNext && Parser.ValidateNext(c)) {
+            } else if (_parser.CachedValidNext && _parser.ValidateNext(c)) {
                 return true;
             } else if (_discard2 != null) {
                 if (!_discard2.ValidateNext(c)) {
@@ -285,14 +281,15 @@ namespace VyneCompiler.Parsers {
             return _discard2 != null;
         }
         protected override bool isValid() {
-            return Parser.IsValid();
+            return _parser.IsValid();
         }
         public override ExpandoObject ToJson() {
-            return Parser.ToJson();
+            return _parser.ToJson();
         }
 
         private Whitespace _discard1 = new Whitespace();
         private Whitespace _discard2 = new Whitespace();
+        private Parser _parser;
     }
     public class Token : Parser {
         public Token(string name, string sequence) {
