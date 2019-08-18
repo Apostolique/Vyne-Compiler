@@ -138,8 +138,8 @@ namespace VyneCompiler.Tests {
         }
         private bool Test_Sequential(string content) {
             Sequential p = new Sequential(
-                new Lazy<Parser>(() => new MultilineComment()),
-                new Lazy<Parser>(() => new Integer())
+                () => new MultilineComment(),
+                () => new Integer()
             );
             return Test_Parser(p, content);
         }
