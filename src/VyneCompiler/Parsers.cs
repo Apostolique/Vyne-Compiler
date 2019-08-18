@@ -9,7 +9,7 @@ namespace VyneCompiler.Parsers {
     /// It's up to the parser's parent to clean up white space and comments after it.
     /// </summary>
     public abstract class Parser {
-        public bool CachedValidNext {
+        public bool CachedValidAdd {
             get;
             private set;
         } = true;
@@ -19,12 +19,12 @@ namespace VyneCompiler.Parsers {
         } = false;
 
         /// <summary>
-        /// This must always be called before Add is called.
+        /// Tries parse a new character.
         /// </summary>
-        /// <returns>Returns true when Add can be called.</returns>
-        public bool ValidateNext(char c) {
-            CachedValidNext = validateNext(c);
-            return CachedValidNext;
+        /// <returns>Returns true when the character is valid.</returns>
+        public bool TryAdd(char c) {
+            CachedValidAdd = tryAdd(c);
+            return CachedValidAdd;
         }
         /// <summary>
         /// Called at the end to make sure the parse is still valid.
@@ -34,18 +34,13 @@ namespace VyneCompiler.Parsers {
             return CachedValid;
         }
 
-        public virtual void Add(char c) {
-            Text += c;
-        }
         /// <summary>
         /// The json output is useful for debugging.
         /// </summary>
         public abstract ExpandoObject ToJson();
 
-        protected abstract bool validateNext(char c);
         protected abstract bool isValid();
-
-        protected string Text = "";
+        protected abstract bool tryAdd(char c);
     }
     public class Alternative : Parser {
         public Alternative(string name, params Func<Parser>[] parsers) {
@@ -56,22 +51,19 @@ namespace VyneCompiler.Parsers {
             }
         }
 
-        public override void Add(char c) {
-            for (int i = _parsers.Count - 1; i >= 0; i--) {
-                if (_parsers[i].CachedValidNext) {
-                    _parsers[i].Add(c);
-                } else {
-                    _parsers.RemoveAt(i);
-                }
-            }
-        }
-        protected override bool validateNext(char c) {
+        protected override bool tryAdd(char c) {
             bool isValidNext = false;
 
-            foreach (Parser p in _parsers) {
-                if (p.CachedValidNext) {
-                    p.ValidateNext(c);
-                    isValidNext = isValidNext || p.CachedValidNext;
+            for (int i = _parsers.Count - 1; i >= 0; i--) {
+                if (_parsers[i].TryAdd(c)) {
+                    isValidNext = true;
+                }
+            }
+            if (isValidNext) {
+                for (int i = _parsers.Count - 1; i >= 0; i--) {
+                    if (!_parsers[i].CachedValidAdd) {
+                        _parsers.RemoveAt(i);
+                    }
                 }
             }
             return isValidNext;
@@ -79,9 +71,11 @@ namespace VyneCompiler.Parsers {
         protected override bool isValid() {
             bool isValid = false;
 
-            for (int i = 0; i < _parsers.Count; i++) {
+            for (int i = _parsers.Count - 1; i >= 0; i--) {
                 if (_parsers[i].IsValid()) {
                     isValid = true;
+                } else {
+                    _parsers.RemoveAt(i);
                 }
             }
 
@@ -125,18 +119,15 @@ namespace VyneCompiler.Parsers {
             }
         }
 
-        public override void Add(char c) {
-            _parsers.Last().Add(c);
-        }
-        protected override bool validateNext(char c) {
+        protected override bool tryAdd(char c) {
             if (_parsers.Count > 0) {
-                if (_parsers.Last().ValidateNext(c)) {
+                if (_parsers.Last().TryAdd(c)) {
                     return true;
                 } else if (_parsers.Count < _parserCreators.Length) {
                     Parser parser = _parserCreators[_parsers.Count]();
-                    parser.ValidateNext(c);
+                    parser.TryAdd(c);
                     _parsers.Add(parser);
-                    return parser.CachedValidNext;
+                    return parser.CachedValidAdd;
                 }
             }
             return false;
@@ -173,19 +164,16 @@ namespace VyneCompiler.Parsers {
             _parsers.Add(_createParser());
         }
 
-        public override void Add(char c) {
-            _parsers.Last().Add(c);
-        }
-        protected override bool validateNext(char c) {
-            _parsers.Last().ValidateNext(c);
+        protected override bool tryAdd(char c) {
+            _parsers.Last().TryAdd(c);
 
-            if (!_parsers.Last().CachedValidNext) {
+            if (!_parsers.Last().CachedValidAdd) {
                 Parser parser = _createParser();
-                parser.ValidateNext(c);
-                if (parser.CachedValidNext) {
+                parser.TryAdd(c);
+                if (parser.CachedValidAdd) {
                     _parsers.Add(parser);
                 }
-                return parser.CachedValidNext;
+                return parser.CachedValidAdd;
             }
 
             return true;
@@ -220,61 +208,65 @@ namespace VyneCompiler.Parsers {
         private List<Parser> _parsers;
     }
     public class Single : Parser {
-        protected override bool validateNext(char c) {
-            return Text.Length < 1;
+        protected override bool tryAdd(char c) {
+            if (_text.Length < 1) {
+                _text += c;
+                return true;
+            }
+            return false;
         }
         protected override bool isValid() {
-            return Text.Length == 1;
+            return _text.Length == 1;
         }
         public override ExpandoObject ToJson() {
             dynamic text = new ExpandoObject();
-            text.Text = Text;
+            text.Text = _text;
             dynamic single = new ExpandoObject();
             single.Single = text;
             return single;
         }
+
+        private string _text = "";
     }
     public class Whitespace : Parser {
-        protected override bool validateNext(char c) {
-            return char.IsWhiteSpace(c);
+        protected override bool tryAdd(char c) {
+            if (char.IsWhiteSpace(c)) {
+                _text += c;
+                return true;
+            }
+            return false;
         }
         protected override bool isValid() {
-            return Text.Length > 0;
+            return _text.Length > 0;
         }
         public override ExpandoObject ToJson() {
             dynamic text = new ExpandoObject();
-            text.Text = Text;
+            text.Text = _text;
             dynamic whitespace = new ExpandoObject();
             whitespace.Whitespace = text;
             return whitespace;
         }
+
+        private string _text = "";
     }
     public class Clear : Parser {
         public Clear(Parser parser) {
             _parser = parser;
         }
 
-        public override void Add(char c) {
+        protected override bool tryAdd(char c) {
             if (_discard1 != null) {
-                _discard1.Add(c);
-            } else if (_parser.CachedValidNext) {
-                _parser.Add(c);
-            } else if (_discard2 != null) {
-                _discard2.Add(c);
-            }
-        }
-        protected override bool validateNext(char c) {
-            if (_discard1 != null) {
-                if (!_discard1.ValidateNext(c)) {
+                if (!_discard1.TryAdd(c)) {
                     _discard1 = null;
+                } else {
+                    return true;
                 }
             }
-            if (_discard1 != null) {
+            if (_parser.CachedValidAdd && _parser.TryAdd(c)) {
                 return true;
-            } else if (_parser.CachedValidNext && _parser.ValidateNext(c)) {
-                return true;
-            } else if (_discard2 != null) {
-                if (!_discard2.ValidateNext(c)) {
+            }
+            if (_discard2 != null) {
+                if (!_discard2.TryAdd(c)) {
                     _discard2 = null;
                 }
             }
@@ -297,15 +289,19 @@ namespace VyneCompiler.Parsers {
             _sequence = sequence.ToArray();
         }
 
-        protected override bool validateNext(char c) {
-            return Text.Length < _sequence.Length && c == _sequence[Text.Length];
+        protected override bool tryAdd(char c) {
+            if (_text.Length < _sequence.Length && c == _sequence[_text.Length]) {
+                _text += c;
+                return true;
+            }
+            return false;
         }
         protected override bool isValid() {
-            return Text.Length == _sequence.Length;
+            return _text.Length == _sequence.Length;
         }
         public override ExpandoObject ToJson() {
             dynamic text = new ExpandoObject();
-            text.Text = Text;
+            text.Text = _text;
             var op = new ExpandoObject() as IDictionary<string, object>;
             op.Add(_name, text);
             return (dynamic)op;
@@ -313,12 +309,20 @@ namespace VyneCompiler.Parsers {
 
         private string _name;
         private char[] _sequence;
+        private string _text = "";
     }
     public class Identifier : Parser {
-        protected override bool validateNext(char c) {
+        protected override bool tryAdd(char c) {
+            if (validateNext(c)) {
+                _text += c;
+                return true;
+            }
+            return false;
+        }
+        private bool validateNext(char c) {
             if (c == '_') {
                 return true;
-            } else if (Text.Length == 0) {
+            } else if (_text.Length == 0) {
                 return char.IsLetter(c);
             } else {
                 return char.IsLetterOrDigit(c);
@@ -326,12 +330,12 @@ namespace VyneCompiler.Parsers {
         }
         protected override bool isValid() {
             bool foundUnderscore = false;
-            for (int i = 0; i < Text.Length; i++) {
-                if (Text[i] == '_') {
+            for (int i = 0; i < _text.Length; i++) {
+                if (_text[i] == '_') {
                     foundUnderscore = true;
-                } else if (!foundUnderscore && char.IsDigit(Text[i])) {
+                } else if (!foundUnderscore && char.IsDigit(_text[i])) {
                     break;
-                } else if (char.IsLetterOrDigit(Text[i])) {
+                } else if (char.IsLetterOrDigit(_text[i])) {
                     return true;
                 }
             }
@@ -339,57 +343,95 @@ namespace VyneCompiler.Parsers {
         }
         public override ExpandoObject ToJson() {
             dynamic text = new ExpandoObject();
-            text.Text = Text;
+            text.Text = _text;
             dynamic identifier = new ExpandoObject();
             identifier.Identifier = text;
             return identifier;
         }
+
+        private string _text = "";
     }
     public class Integer : Parser {
-        protected override bool validateNext(char c) {
-            return char.IsDigit(c);
+        protected override bool tryAdd(char c) {
+            if (char.IsDigit(c)) {
+                _text += c;
+                return true;
+            }
+            return false;
         }
         protected override bool isValid() {
             // Perhaps it will make sense to check if the value is within a Signed 32-bit integer.
             // That is, until we get a real type system.
-            return Text.Length > 0;
+            return _text.Length > 0;
         }
         public override ExpandoObject ToJson() {
             dynamic text = new ExpandoObject();
-            text.Text = Text;
+            text.Text = _text;
             dynamic integer = new ExpandoObject();
             integer.Integer = text;
             return integer;
         }
+
+        private string _text = "";
     }
     public class LineComment : Parser {
-        protected override bool validateNext(char c) {
-            if (Text.Length <= 1) {
+        protected override bool tryAdd(char c) {
+            if (validateNext(c)) {
+                _text += c;
+                return true;
+            }
+            return false;
+        }
+        protected bool validateNext(char c) {
+            if (_text.Length <= 1) {
                 return c == '/';
             }
-            return Text.Last() != '\n';
+            return _text.Last() != '\n';
         }
         protected override bool isValid() {
-            return Enumerable.SequenceEqual(Text.Take(2), _opening);
+            return Enumerable.SequenceEqual(_text.Take(2), _opening);
         }
         public override ExpandoObject ToJson() {
             dynamic text = new ExpandoObject();
-            text.Text = Text;
+            text.Text = _text;
             dynamic lineComment = new ExpandoObject();
             lineComment.LineComment = text;
             return lineComment;
         }
 
         private char[] _opening = new char[] { '/', '/' };
+        private string _text = "";
     }
     public class MultilineComment : Parser {
-        protected override bool validateNext(char c) {
-            if (Text.Length == 0) {
+        protected override bool tryAdd(char c) {
+            if (validateNext(c)) {
+                _text += c;
+
+                int char2 = _text.Length - 2;
+                int char3 = _text.Length - 3;
+                IEnumerable<char> last2 = _text.TakeLast(2);
+                IEnumerable<char> last3 = _text.TakeLast(3);
+                if (_lastCharClosed < char2 && Enumerable.SequenceEqual(last2, _opening)) {
+                    _nestingLevel++;
+                    _lastCharOpen = _text.Length - 1;
+                } else if (_lastCharOpen < char3 && Enumerable.SequenceEqual(last3, _breakOut)) {
+                    _nestingLevel = 0;
+                    _lastCharClosed = _text.Length - 1;
+                } else if (_lastCharOpen < char2 && Enumerable.SequenceEqual(last2, _closing)) {
+                    _nestingLevel--;
+                    _lastCharClosed = _text.Length - 1;
+                }
+                return true;
+            }
+            return false;
+        }
+        private bool validateNext(char c) {
+            if (_text.Length == 0) {
                 return c == '/';
-            } else if (Text.Length == 1) {
+            } else if (_text.Length == 1) {
                 return c == '*';
-            } else if (Text.Length >= 4) {
-                if (Enumerable.SequenceEqual(Text.TakeLast(2).Append(c), _breakOut)) {
+            } else if (_text.Length >= 4) {
+                if (Enumerable.SequenceEqual(_text.TakeLast(2).Append(c), _breakOut)) {
                     return true;
                 } else if (_nestingLevel == 0) {
                     return false;
@@ -398,29 +440,11 @@ namespace VyneCompiler.Parsers {
             return true;
         }
         protected override bool isValid() {
-            return Text.Length >= 4 && _nestingLevel <= 0;
-        }
-        public override void Add(char c) {
-            Text += c;
-
-            int char2 = Text.Length - 2;
-            int char3 = Text.Length - 3;
-            IEnumerable<char> last2 = Text.TakeLast(2);
-            IEnumerable<char> last3 = Text.TakeLast(3);
-            if (_lastCharClosed < char2 && Enumerable.SequenceEqual(last2, _opening)) {
-                _nestingLevel++;
-                _lastCharOpen = Text.Length - 1;
-            } else if (_lastCharOpen < char3 && Enumerable.SequenceEqual(last3, _breakOut)) {
-                _nestingLevel = 0;
-                _lastCharClosed = Text.Length - 1;
-            } else if (_lastCharOpen < char2 && Enumerable.SequenceEqual(last2, _closing)) {
-                _nestingLevel--;
-                _lastCharClosed = Text.Length - 1;
-            }
+            return _text.Length >= 4 && _nestingLevel <= 0;
         }
         public override ExpandoObject ToJson() {
             dynamic text = new ExpandoObject();
-            text.Text = Text;
+            text.Text = _text;
             dynamic multilineComment = new ExpandoObject();
             multilineComment.MultilineComment = text;
             return multilineComment;
@@ -432,6 +456,7 @@ namespace VyneCompiler.Parsers {
         private char[] _opening = new char[] { '/', '*' };
         private char[] _closing = new char[] { '*', '/' };
         private char[] _breakOut = new char[] { '*', '/', '/' };
+        private string _text = "";
     }
     public class Factor : Alternative {
         public Factor() : base("Factor",

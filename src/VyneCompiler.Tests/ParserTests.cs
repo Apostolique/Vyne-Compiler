@@ -157,10 +157,9 @@ namespace VyneCompiler.Tests {
         }
         private bool Test_Parser(Parser p, string content) {
             foreach (char c in content) {
-                if (!p.ValidateNext(c)) {
+                if (!p.TryAdd(c)) {
                     return false;
                 }
-                p.Add(c);
             }
             return p.IsValid();
         }
