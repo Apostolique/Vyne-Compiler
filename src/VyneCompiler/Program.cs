@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Newtonsoft.Json;
 using VyneCompiler.Parsers;
 
@@ -15,17 +13,19 @@ namespace VyneCompiler {
             Core.Setup(inputFile);
 
             Sequential p = new Sequential(
-                new Lazy<Parser>(() => new Repeat("FactorOperator", () =>
-                    new Sequential(
-                        new Lazy<Parser>(() => new Factor()), // Error, on the last loop this gets consumed before exiting the repeat.
-                        new Lazy<Parser>(() => new Alternative("Operator",
-                            new Lazy<Parser>(() => new Token("Multiply", "*")),
-                            new Lazy<Parser>(() => new Token("Divide", "/")),
-                            new Lazy<Parser>(() => new Token("Modulo", "%"))
-                        ))
-                    )
-                )),
-                new Lazy<Parser>(() => new Factor())
+                new Lazy<Parser>(() => new Sequential(
+                    new Lazy<Parser>(() => new Factor()),
+                    new Lazy<Parser>(() => new Repeat("FactorOperator", () =>
+                        new Sequential(
+                            new Lazy<Parser>(() => new Alternative("Operator",
+                                new Lazy<Parser>(() => new Token("Multiply", "*")),
+                                new Lazy<Parser>(() => new Token("Divide", "/")),
+                                new Lazy<Parser>(() => new Token("Modulo", "%"))
+                            )),
+                            new Lazy<Parser>(() => new Factor())
+                        )
+                    ))
+                ))
             );
             for (int i = 0; !Core.IsEndReached(i); i++) {
                 if (!p.ValidateNext(Core.GetCharAt(i).Value)) {
