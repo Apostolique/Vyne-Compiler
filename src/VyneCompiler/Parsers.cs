@@ -171,38 +171,38 @@ namespace VyneCompiler.Parsers {
         public Repeat(string name, Func<Parser> createParser) {
             _name = name;
             CreateParser = createParser;
-            Parser = CreateParser();
-            CompletedParsers = new List<Parser>();
+            Parsers = new List<Parser>();
+            Parsers.Add(CreateParser());
         }
 
-        public Parser Parser;
-        public List<Parser> CompletedParsers;
+        public List<Parser> Parsers;
 
         public override void Add(char c) {
-            Parser.Add(c);
+            Parsers.Last().Add(c);
         }
         protected override bool validateNext(char c) {
-            Parser.ValidateNext(c);
+            Parsers.Last().ValidateNext(c);
 
-            if (!Parser.CachedValidNext) {
-                CompletedParsers.Add(Parser);
-
-                Parser = CreateParser();
-                return Parser.ValidateNext(c);
+            if (!Parsers.Last().CachedValidNext) {
+                Parser parser = CreateParser();
+                parser.ValidateNext(c);
+                if (parser.CachedValidNext) {
+                    Parsers.Add(parser);
+                }
+                return parser.CachedValidNext;
             }
 
             return true;
         }
         protected override bool isValid() {
+            if (Parsers.Count == 0) {
+                return false;
+            }
+
             bool isValid = true;
 
-            for (int i = 0; i < CompletedParsers.Count; i++) {
-                isValid = CompletedParsers[i].IsValid() && isValid;
-            }
-            if (Parser.IsValid()) {
-                CompletedParsers.Add(Parser);
-            } else if (CompletedParsers.Count == 0) {
-                return false;
+            for (int i = 0; i < Parsers.Count; i++) {
+                isValid = Parsers[i].IsValid() && isValid;
             }
 
             return isValid;
@@ -211,8 +211,8 @@ namespace VyneCompiler.Parsers {
             var repeat = new ExpandoObject() as IDictionary<string, object>;
 
             List<ExpandoObject> parsers = new List<ExpandoObject>();
-            for (int i = 0; i < CompletedParsers.Count; i++) {
-                parsers.Add(CompletedParsers[i].ToJson());
+            for (int i = 0; i < Parsers.Count; i++) {
+                parsers.Add(Parsers[i].ToJson());
             }
             repeat.Add(_name, parsers);
 
