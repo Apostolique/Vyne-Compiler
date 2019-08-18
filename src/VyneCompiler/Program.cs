@@ -28,10 +28,10 @@ namespace VyneCompiler {
                 )
             );
             for (int i = 0; !Core.IsEndReached(i); i++) {
-                if (!p.ValidateNext(Core.GetCharAt(i).Value)) {
+                if (!p.ValidateNext(Core.GetCharAt(i))) {
                     break;
                 }
-                p.Add(Core.GetCharAt(i).Value);
+                p.Add(Core.GetCharAt(i));
             }
             Console.WriteLine("IsValid: " + p.IsValid());
 

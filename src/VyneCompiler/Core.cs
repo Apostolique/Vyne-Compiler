@@ -8,7 +8,7 @@ namespace VyneCompiler.Parsers {
                 _source = sr.ReadToEnd();
             }
         }
-        public static char? GetCharAt(int index) {
+        public static char GetCharAt(int index) {
             if (index < _source.Length) {
                 return _source[index];
             } else {
