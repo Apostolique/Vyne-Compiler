@@ -48,17 +48,20 @@ namespace VyneCompiler.Parsers {
         protected string Text = "";
     }
     public class Alternative : Parser {
-        public Alternative(string name, params Lazy<Parser>[] parsers) {
+        public Alternative(string name, params Func<Parser>[] parsers) {
             _name = name;
-            Parsers = parsers.ToList();
+            Parsers = new List<Parser>();
+            foreach (Func<Parser> parserCreator in parsers) {
+                Parsers.Add(parserCreator());
+            }
         }
 
-        public List<Lazy<Parser>> Parsers;
+        public List<Parser> Parsers;
 
         public override void Add(char c) {
             for (int i = Parsers.Count - 1; i >= 0; i--) {
-                if (Parsers[i].Value.CachedValidNext) {
-                    Parsers[i].Value.Add(c);
+                if (Parsers[i].CachedValidNext) {
+                    Parsers[i].Add(c);
                 } else {
                     Parsers.RemoveAt(i);
                 }
@@ -67,10 +70,10 @@ namespace VyneCompiler.Parsers {
         protected override bool validateNext(char c) {
             bool isValidNext = false;
 
-            foreach (Lazy<Parser> p in Parsers) {
-                if (p.Value.CachedValidNext) {
-                    p.Value.ValidateNext(c);
-                    isValidNext = isValidNext || p.Value.CachedValidNext;
+            foreach (Parser p in Parsers) {
+                if (p.CachedValidNext) {
+                    p.ValidateNext(c);
+                    isValidNext = isValidNext || p.CachedValidNext;
                 }
             }
             return isValidNext;
@@ -79,7 +82,7 @@ namespace VyneCompiler.Parsers {
             bool isValid = false;
 
             for (int i = 0; i < Parsers.Count; i++) {
-                if (Parsers[i].Value.IsValid()) {
+                if (Parsers[i].IsValid()) {
                     isValid = true;
                 }
             }
@@ -92,12 +95,12 @@ namespace VyneCompiler.Parsers {
             int count = 0;
             List<ExpandoObject> parsersJson = new List<ExpandoObject>();
             if (Parsers.Count > 0) {
-                Parser parser = Parsers[0].Value;
-                foreach (Lazy<Parser> p in Parsers) {
-                    if (p.Value.CachedValid) {
-                        parsersJson.Add(p.Value.ToJson());
+                Parser parser = Parsers[0];
+                foreach (Parser p in Parsers) {
+                    if (p.CachedValid) {
+                        parsersJson.Add(p.ToJson());
                         count++;
-                        parser = p.Value;
+                        parser = p;
                     }
                 }
                 if (count == 1) {
@@ -435,44 +438,42 @@ namespace VyneCompiler.Parsers {
     }
     public class Factor : Alternative {
         public Factor() : base("Factor",
-            new Lazy<Parser>(() => new Clear(new Integer())),
-            new Lazy<Parser>(() => new Clear(new Identifier()))
+            () => new Clear(new Integer()),
+            () => new Clear(new Identifier())
         ) { }
     }
     public class Term : Alternative {
         public Term() : base("Term",
-            new Lazy<Parser>(() => new Factor()),
-            new Lazy<Parser>(() => new Sequential(
+            () => new Factor(),
+            () => new Sequential(
                 () => new Repeat("FactorOperator", () =>
                     new Sequential(
                         () => new Factor(),
                         () => new Alternative("Operator",
-                            new Lazy<Parser>(() => new Token("Multiply", "*")),
-                            new Lazy<Parser>(() => new Token("Divide", "/")),
-                            new Lazy<Parser>(() => new Token("Modulo", "%"))
+                            () => new Token("Multiply", "*"),
+                            () => new Token("Divide", "/"),
+                            () => new Token("Modulo", "%")
                         )
                     )
                 ),
                 () => new Factor()
-            ))
+            )
         ) { }
     }
     public class Expression : Alternative {
         public Expression() : base("Expression",
-            new Lazy<Parser>(() => new Term()),
-            new Lazy<Parser>(
-                () => new Sequential(
-                    () => new Repeat("TermOperator",
-                        () => new Sequential(
-                            () => new Term(),
-                            () => new Alternative("Operator",
-                                new Lazy<Parser>(() => new Token("Addition", "+")),
-                                new Lazy<Parser>(() => new Token("Subtract", "-"))
-                            )
+            () => new Term(),
+            () => new Sequential(
+                () => new Repeat("TermOperator",
+                    () => new Sequential(
+                        () => new Term(),
+                        () => new Alternative("Operator",
+                            () => new Token("Addition", "+"),
+                            () => new Token("Subtract", "-")
                         )
-                    ),
-                    () => new Term()
-                )
+                    )
+                ),
+                () => new Term()
             )
         ) { }
     }

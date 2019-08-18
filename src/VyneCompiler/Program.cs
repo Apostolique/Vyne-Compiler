@@ -18,9 +18,9 @@ namespace VyneCompiler {
                     () => new Repeat("FactorOperator", () =>
                         new Sequential(
                             () => new Alternative("Operator",
-                                new Lazy<Parser>(() => new Token("Multiply", "*")),
-                                new Lazy<Parser>(() => new Token("Divide", "/")),
-                                new Lazy<Parser>(() => new Token("Modulo", "%"))
+                                () => new Token("Multiply", "*"),
+                                () => new Token("Divide", "/"),
+                                () => new Token("Modulo", "%")
                             ),
                             () => new Factor()
                         )

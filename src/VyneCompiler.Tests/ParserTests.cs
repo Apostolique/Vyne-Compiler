@@ -144,7 +144,7 @@ namespace VyneCompiler.Tests {
             return Test_Parser(p, content);
         }
         private bool Test_Alternative(string content) {
-            Alternative p = new Alternative("Test", new Lazy<Parser>(() => new Identifier()), new Lazy<Parser>(() => new Integer()));
+            Alternative p = new Alternative("Test", () => new Identifier(), () => new Integer());
             return Test_Parser(p, content);
         }
         private bool Test_Single(string content) {
