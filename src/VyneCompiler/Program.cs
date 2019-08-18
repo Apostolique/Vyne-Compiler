@@ -15,8 +15,8 @@ namespace VyneCompiler {
             Sequential p = new Sequential(
                 () => new Sequential(
                     () => new Factor(),
-                    () => new Repeat("FactorOperator", () =>
-                        new Sequential(
+                    () => new Repeat("FactorOperator",
+                        () => new Sequential(
                             () => new Alternative("Operator",
                                 () => new Token("Multiply", "*"),
                                 () => new Token("Divide", "/"),
