@@ -19,7 +19,7 @@ namespace VyneCompiler.Parsers {
         } = false;
 
         /// <summary>
-        /// Tries parse a new character.
+        /// Tries to parse a new character.
         /// </summary>
         /// <returns>Returns true when the character is valid.</returns>
         public bool TryAdd(char c) {
