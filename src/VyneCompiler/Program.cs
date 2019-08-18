@@ -13,17 +13,15 @@ namespace VyneCompiler {
             Core.Setup(inputFile);
 
             Sequential p = new Sequential(
-                () => new Sequential(
-                    () => new Factor(),
-                    () => new Repeat("FactorOperator",
-                        () => new Sequential(
-                            () => new Alternative("Operator",
-                                () => new Token("Multiply", "*"),
-                                () => new Token("Divide", "/"),
-                                () => new Token("Modulo", "%")
-                            ),
-                            () => new Factor()
-                        )
+                () => new Factor(),
+                () => new Repeat("FactorOperator",
+                    () => new Sequential(
+                        () => new Alternative("Operator",
+                            () => new Token("Multiply", "*"),
+                            () => new Token("Divide", "/"),
+                            () => new Token("Modulo", "%")
+                        ),
+                        () => new Factor()
                     )
                 )
             );
