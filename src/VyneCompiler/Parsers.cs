@@ -23,15 +23,13 @@ namespace VyneCompiler.Parsers {
         /// </summary>
         /// <returns>Returns true when the character is valid.</returns>
         public bool TryAdd(char c) {
-            CachedValidAdd = tryAdd(c);
-            return CachedValidAdd;
+            return CachedValidAdd = tryAdd(c);
         }
         /// <summary>
         /// Called at the end to make sure the parse is still valid.
         /// </summary>
         public bool IsValid() {
-            CachedValid = isValid();
-            return CachedValid;
+            return CachedValid = isValid();
         }
 
         /// <summary>
