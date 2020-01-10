@@ -12,19 +12,7 @@ namespace VyneCompiler {
             string outputFile = "VyneSource/HelloWorld.json";
             Core.Setup(inputFile);
 
-            Sequential p = new Sequential(
-                () => new Factor(),
-                () => new Repeat("FactorOperator",
-                    () => new Sequential(
-                        () => new Alternative("Operator",
-                            () => new Token("Multiply", "*"),
-                            () => new Token("Divide", "/"),
-                            () => new Token("Modulo", "%")
-                        ),
-                        () => new Factor()
-                    )
-                )
-            );
+            Parser p = new Expression();
             for (int i = 0; !Core.IsEndReached(i); i++) {
                 if (!p.TryAdd(Core.GetCharAt(i))) {
                     break;

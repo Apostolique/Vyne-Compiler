@@ -9,7 +9,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/VyneCompiler/bin/Debug/netcoreapp2.2/VyneCompiler.dll",
+            "program": "${workspaceFolder}/src/VyneCompiler/bin/Debug/netcoreapp3.1/VyneCompiler.dll",
             "args": [],
             "cwd": "${workspaceFolder}/src/VyneCompiler",
             "console": "integratedTerminal",

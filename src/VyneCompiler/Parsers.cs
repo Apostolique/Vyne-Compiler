@@ -462,38 +462,32 @@ namespace VyneCompiler.Parsers {
             () => new Clear(new Identifier())
         ) { }
     }
-    public class Term : Alternative {
-        public Term() : base("Term",
+    public class Term : Sequential {
+        public Term() : base(
             () => new Factor(),
-            () => new Sequential(
-                () => new Repeat("FactorOperator", () =>
-                    new Sequential(
-                        () => new Factor(),
-                        () => new Alternative("Operator",
-                            () => new Token("Multiply", "*"),
-                            () => new Token("Divide", "/"),
-                            () => new Token("Modulo", "%")
-                        )
-                    )
-                ),
-                () => new Factor()
+            () => new Repeat("FactorOperator",
+                () => new Sequential(
+                    () => new Alternative("Operator",
+                        () => new Token("Multiply", "*"),
+                        () => new Token("Divide", "/"),
+                        () => new Token("Modulo", "%")
+                    ),
+                    () => new Factor()
+                )
             )
         ) { }
     }
-    public class Expression : Alternative {
-        public Expression() : base("Expression",
+    public class Expression : Sequential {
+        public Expression() : base(
             () => new Term(),
-            () => new Sequential(
-                () => new Repeat("TermOperator",
-                    () => new Sequential(
-                        () => new Term(),
-                        () => new Alternative("Operator",
-                            () => new Token("Addition", "+"),
-                            () => new Token("Subtract", "-")
-                        )
-                    )
-                ),
-                () => new Term()
+            () => new Repeat("TermOperator",
+                () => new Sequential(
+                    () => new Alternative("Operator",
+                        () => new Token("Addition", "+"),
+                        () => new Token("Subtract", "-")
+                    ),
+                    () => new Term()
+                )
             )
         ) { }
     }
