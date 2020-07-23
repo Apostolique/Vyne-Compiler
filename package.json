@@ -1,0 +1,26 @@
+{
+  "name": "vyne-compiler",
+  "version": "0.1.0",
+  "description": "Compiler for the Vyne programming language.",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github.com/Apostolique/Vyne-Compiler"
+  },
+  "keywords": [
+    "vyne",
+    "compiler"
+  ],
+  "author": "Jean-David Moisan",
+  "license": "MIT",
+  "dependencies": {
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.7"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.24"
+  }
+}
