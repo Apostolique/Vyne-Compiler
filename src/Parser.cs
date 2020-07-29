@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
+using VyneCompiler.A;
 
 namespace VyneCompiler.P {
     public class Parser<T> {
@@ -49,8 +49,8 @@ namespace VyneCompiler.P {
             return result.Value;
         }
 
-        public static Parser<string> Regexp(string regexp) {
-            return new Parser<string>(source => source.Match(new Regex(regexp)));
+        public static Parser<string> Regexp(string regexp, RegexOptions options = RegexOptions.None) {
+            return new Parser<string>(source => source.Match(new Regex(@"\G" + regexp, options)));
         }
         public static Parser<U> Constant<U>(U value) {
             return new Parser<U>(source => new ParseResult<U>(value, source));
@@ -106,5 +106,51 @@ namespace VyneCompiler.P {
 
         public T Value { get; set; }
         public Source Source { get; set; }
+    }
+
+    public static class Lexer {
+        public static Parser<string> Whitespace = Parser<string>.Regexp(@"[ \n\r\t]+");
+        public static Parser<string> Comments = Parser<string>.Regexp(@"[/][/].*").Or(Parser<string>.Regexp(@"[/][*].*[*][/]", RegexOptions.Singleline));
+        public static Parser<List<string>> Ignored = Parser<string>.ZeroOrMore(Whitespace.Or(Comments));
+
+        public static Func<string, Parser<string>> token = pattern => Parser<string>.Regexp(pattern).Bind(value => Ignored.And(Parser<string>.Constant(value)));
+
+        public static Parser<string> FUNCTION = token(@"function\b");
+        public static Parser<string> IF = token(@"if\b");
+        public static Parser<string> ELSE = token(@"else\b");
+        public static Parser<string> RETURN = token(@"return\b");
+        public static Parser<string> LET = token(@"let\b");
+        public static Parser<string> WHILE = token(@"while\b");
+
+        public static Parser<string> COMMA = token(@"[,]");
+        public static Parser<string> SEMICOLON = token(@";");
+        public static Parser<string> LEFT_PAREN = token(@"[(]");
+        public static Parser<string> RIGHT_PAREN = token(@"[)]");
+        public static Parser<string> LEFT_BRACE = token(@"[{]");
+        public static Parser<string> RIGHT_BRACE = token(@"[}]");
+
+        public static Parser<Integer> INTEGER = token(@"[0-9]+").Map(digits => new Integer(Int32.Parse(digits)));
+        public static Parser<string> ID = token(@"[a-zA-Z_]");
+        public static Parser<Id> id = ID.Map(x => new Id(x));
+
+        public static Parser<Func<AST, Not>> NOT = token(@"!").Map<Func<AST, Not>>(_ => term => new Not(term));
+        public static Parser<Func<AST, AST, Equal>> EQUAL = token(@"==").Map<Func<AST, AST, Equal>>(_ => (left, right) => new Equal(left, right));
+        public static Parser<Func<AST, AST, NotEqual>> NOT_EQUAL = token(@"!=").Map<Func<AST, AST, NotEqual>>(_ => (left, right) => new NotEqual(left, right));
+        public static Parser<Func<AST, AST, Add>> PLUS = token(@"[+]").Map<Func<AST, AST, Add>>(_ => (left, right) => new Add(left, right));
+        public static Parser<Func<AST, AST, Subtract>> MINUS = token(@"[-]").Map<Func<AST, AST, Subtract>>(_ => (left, right) => new Subtract(left, right));
+        public static Parser<Func<AST, AST, Multiply>> STAR = token(@"[*]").Map<Func<AST, AST, Multiply>>(_ => (left, right) => new Multiply(left, right));
+        public static Parser<Func<AST, AST, Divide>> SLASH = token(@"[/]").Map<Func<AST, AST, Divide>>(_ => (left, right) => new Divide(left, right));
+
+        public static Parser<AST> expression = Parser<string>.Error<AST>("expression parser used before definition");
+
+        public static Parser<List<AST>> args =
+            expression.Bind(arg =>
+                Parser<string>.ZeroOrMore(COMMA.And(expression)).Bind(args =>
+                    Parser<string>.Constant<List<AST>>(PrependList(arg, args)))).Or(Parser<string>.Constant(new List<AST>()));
+
+        private static List<T> PrependList<T>(T x, List<T> nx) {
+            nx.Insert(0, x);
+            return nx;
+        }
     }
 }
