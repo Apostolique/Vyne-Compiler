@@ -46,11 +46,11 @@ namespace VyneCompiler.A {
     }
 
     public class Not : AST {
-        public Not(string term) {
+        public Not(AST term) {
             Term = term;
         }
 
-        public string Term { get; set; }
+        public AST Term { get; set; }
 
         public override bool Equals(object? obj) {
             if (!(obj is Not)) return false;
